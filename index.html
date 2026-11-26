@@ -320,7 +320,7 @@ footer {
     <span id="seen"></span>
   </header>
   <div id="stage"></div>
-  <footer>左滑下一张 · 右滑上一张</footer>
+  <footer>上滑下一张 · 下滑上一张</footer>
 </div>
 
 <div id="sheet">
@@ -420,10 +420,20 @@ function updateHeader() {
 }
 
 /* ---------- 渲染 ---------- */
-function makeCard(i) {
+function place(el, offsetY, scale, opacity) {
+  el.style.transform = 'translate3d(0, calc(-50% + ' + offsetY + 'px), 0) scale(' + scale + ')';
+  el.style.opacity = String(opacity);
+}
+
+function markSeen(i) {
+  seen[i] = (seen[i] || 0) + 1;
+  saveSeen();
+  updateHeader();
+}
+
+/** 把卡片内容刷成第 i 张（复用同一个元素） */
+function fillCard(el, i) {
   const c = pool[i];
-  const el = document.createElement('div');
-  el.className = 'card';
   el.innerHTML = '<div class="era"></div><h2></h2><p></p><div class="think"></div>';
 
   const era = el.querySelector('.era');
@@ -436,39 +446,70 @@ function makeCard(i) {
   const think = el.querySelector('.think');
   if (c.x) think.textContent = c.x; else think.remove();
 
-  return el;
-}
-
-function place(el, offsetY, scale, opacity) {
-  el.style.transform = 'translate3d(0, calc(-50% + ' + offsetY + 'px), 0) scale(' + scale + ')';
-  el.style.opacity = String(opacity);
-}
-
-function markSeen(i) {
-  seen[i] = (seen[i] || 0) + 1;
-  saveSeen();
-  updateHeader();
-}
-
-function render(i, fromDir) {
-  if (!pool.length) return;
-  if (typeof resetGestures === 'function') resetGestures();
-  i = Math.max(0, Math.min(i, pool.length - 1));
-
-  stage.innerHTML = '';
-  const el = makeCard(i);
-  el.style.transition = 'none';
-  place(el, fromDir ? fromDir * 36 : 0, fromDir ? 0.95 : 1, 0);
-  stage.appendChild(el);
-  bindSwipe(el);
-
-  requestAnimationFrame(() => {
-    el.style.transition = '';
-    place(el, 0, 1, 1);
-  });
-
+  el.dataset.i = i;
   curIdx = i;
   markSeen(i);
+}
+
+/**
+ * 始终只有两张卡在动：current（当前）和 incoming（新滑进来的）。
+ * 无论怎么连滑，当前卡片的 opacity 永远被设回 1，不会停在 0。
+ */
+function render(i, fromDir) {
+  if (!pool.length) return;
+  i = Math.max(0, Math.min(i, pool.length - 1));
+
+  const dir = fromDir || 0;
+  resetGestures();
+
+  // 把上一轮遗留的 incoming 收掉
+  stage.querySelectorAll('.card').forEach((c, idx, arr) => {
+    if (idx < arr.length - 1) c.remove();
+  });
+
+  let cur = stage.querySelector('.card');
+  if (!cur) {
+    cur = document.createElement('div');
+    cur.className = 'card';
+    stage.appendChild(cur);
+    fillCard(cur, i);
+    cur.style.transition = 'none';
+    place(cur, 0, 1, 1);
+    bindSwipe(cur);
+    return;
+  }
+
+  if (dir === 0) {
+    // 切主题 / 初始化：直接替换内容
+    fillCard(cur, i);
+    cur.style.transition = '';
+    cur.style.pointerEvents = '';
+    place(cur, 0, 1, 1);
+    bindSwipe(cur);
+    return;
+  }
+
+  // 新卡从滑动来的方向进入
+  const incoming = document.createElement('div');
+  incoming.className = 'card';
+  stage.appendChild(incoming);
+  fillCard(incoming, i);
+  bindSwipe(incoming);
+
+  incoming.style.transition = 'none';
+  place(incoming, dir * 46, 0.96, 0);
+  requestAnimationFrame(() => {
+    incoming.style.transition = '';
+    place(incoming, 0, 1, 1);
+  });
+
+  // 旧卡离开
+  const old = cur;
+  old.style.transition = '';
+  old.style.pointerEvents = 'none';
+  old.style.transform = 'translate3d(0, calc(-50% + ' + (-dir * 46) + 'vh), 0)';
+  old.style.opacity = '0';
+  setTimeout(() => { if (old.parentNode) old.remove(); }, 420);
 }
 
 function next() {
@@ -483,35 +524,30 @@ function prev() {
   render(history[history.length - 1], -1);
 }
 
-/* ---------- 手势 ---------- */
-/*
- * 只在卡片上监听 touchstart，之后的 move/end 全部挂在 window 上。
- * 这样即使手指滑出卡片范围，手势也不会丢；同时用 token 保证
- * 一次触摸最多触发一次翻页，避免 touchend / touchcancel 重复。
- */
+/* ---------- 手势（上下滑，像短视频那样一屏一张） ---------- */
 let gestureLock = false;
 let currentCleanup = null;
 
 function bindSwipe(el) {
   el.addEventListener('touchstart', onTouchStart, { passive: true });
 
-  // 鼠标（桌面预览）
-  let mx = 0, down = false;
+  // 鼠标 / 桌面预览
+  let my = 0, down = false;
   el.addEventListener('mousedown', e => {
     down = true;
-    mx = e.clientX;
+    my = e.clientY;
     el.style.transition = 'none';
   });
   window.addEventListener('mousemove', e => {
     if (!down) return;
-    const d = e.clientX - mx;
-    el.style.transform = 'translate3d(' + d + 'px, -50%, 0) rotate(' + (d * 0.025) + 'deg)';
+    const d = e.clientY - my;
+    el.style.transform = 'translate3d(0, calc(-50% + ' + d + 'px), 0)';
   });
   window.addEventListener('mouseup', e => {
     if (!down) return;
     down = false;
     el.style.transition = '';
-    const d = e.clientX - mx;
+    const d = e.clientY - my;
     if (d <= -CONFIG.threshold) fan(el, -1);
     else if (d >= CONFIG.threshold) fan(el, 1);
     else place(el, 0, 1, 1);
@@ -519,13 +555,11 @@ function bindSwipe(el) {
 }
 
 function onTouchStart(e) {
-  if (e.touches.length !== 1) return;
+  if (e.touches.length !== 1 || gestureLock) return;
   const el = e.currentTarget;
-  if (gestureLock) return;
-
   const x0 = e.touches[0].clientX;
   const y0 = e.touches[0].clientY;
-  let dx = 0, axis = null, done = false;
+  let dy = 0, axis = null, done = false;
 
   el.style.transition = 'none';
 
@@ -533,57 +567,54 @@ function onTouchStart(e) {
     if (!(ev.touches && ev.touches.length)) return;
     const tx = ev.touches[0].clientX;
     const ty = ev.touches[0].clientY;
-    dx = tx - x0;
-    const dy = ty - y0;
+    dy = ty - y0;
+    const dx = tx - x0;
 
     if (axis === null && (Math.abs(dx) > CONFIG.axisLock || Math.abs(dy) > CONFIG.axisLock)) {
-      axis = Math.abs(dx) > Math.abs(dy) ? 'x' : 'y';
+      axis = Math.abs(dy) > Math.abs(dx) ? 'y' : 'x';
     }
-    if (axis === 'y') return;
+    if (axis === 'x') return;
 
     if (ev.cancelable) ev.preventDefault();
-    el.style.transform = 'translate3d(' + dx + 'px, -50%, 0) rotate(' + (dx * 0.025) + 'deg)';
-    el.style.opacity = String(Math.max(0.4, 1 - Math.abs(dx) / 460));
+    const damped = dy * 0.92;
+    el.style.transform = 'translate3d(0, calc(-50% + ' + damped + 'px), 0)';
+    el.style.opacity = String(Math.max(0.35, 1 - Math.abs(damped) / 620));
+  }
+
+  function cleanup() {
+    window.removeEventListener('touchmove', move);
+    window.removeEventListener('touchend', end);
+    window.removeEventListener('touchcancel', cancel);
+    currentCleanup = null;
   }
 
   function end() {
     if (done) return;
     done = true;
-    window.removeEventListener('touchmove', move);
-    window.removeEventListener('touchend', end);
-    window.removeEventListener('touchcancel', cancel);
-
-    if (axis === 'y') { return; }
+    cleanup();
+    if (axis === 'x') return;
 
     el.style.transition = '';
-
-    if (dx <= -CONFIG.threshold) fan(el, -1);
-    else if (dx >= CONFIG.threshold) fan(el, 1);
+    if (dy <= -CONFIG.threshold) fan(el, -1);       // 上滑 → 下一张
+    else if (dy >= CONFIG.threshold) fan(el, 1);    // 下滑 → 上一张
     else place(el, 0, 1, 1);
   }
 
   function cancel() {
     if (done) return;
     done = true;
-    window.removeEventListener('touchmove', move);
-    window.removeEventListener('touchend', end);
-    window.removeEventListener('touchcancel', cancel);
+    cleanup();
     el.style.transition = '';
     place(el, 0, 1, 1);
   }
 
-  currentCleanup = function () {
-    window.removeEventListener('touchmove', move);
-    window.removeEventListener('touchend', end);
-    window.removeEventListener('touchcancel', cancel);
-  };
-
+  currentCleanup = cleanup;
   window.addEventListener('touchmove', move, { passive: false });
   window.addEventListener('touchend', end, { passive: true });
   window.addEventListener('touchcancel', cancel, { passive: true });
 }
 
-/** 收起当前卡片上的所有手势监听并解锁（换卡时必须调用） */
+/** 收起旧的手势监听并解锁 */
 function resetGestures() {
   if (typeof currentCleanup === 'function') {
     try { currentCleanup(); } catch (e) {}
@@ -592,24 +623,13 @@ function resetGestures() {
   gestureLock = false;
 }
 
-/** 让卡片飞出，然后换下一张 */
+/** 手势确认：dir=-1 下一张（上滑），1 上一张（下滑） */
 function fan(el, dir) {
-  gestureLock = true;
   hidePop();
   el.style.transition = '';
-  el.style.transform = 'translate3d(' + (dir * 120) + 'vw, -50%, 0) rotate(' + (dir * 10) + 'deg)';
+  el.style.transform = 'translate3d(0, calc(-50% + ' + (dir * -1) * 120 + 'vh), 0)';
   el.style.opacity = '0';
-
-  setTimeout(() => {
-    try {
-      if (dir < 0) next(); else prev();
-    } finally {
-      gestureLock = false;
-    }
-  }, 150);
-
-  // 兜底：万一上面没跑成，2 秒后解锁
-  setTimeout(() => { gestureLock = false; }, 2000);
+  if (dir < 0) next(); else prev();
 }
 
 /* ---------- 键盘 ---------- */
