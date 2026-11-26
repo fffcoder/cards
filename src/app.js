@@ -94,7 +94,8 @@ function makeCard(i) {
   if (c.e) era.textContent = c.e; else era.remove();
 
   el.querySelector('h2').textContent = c.t;
-  el.querySelector('p').textContent = c.b;
+  el.querySelector('p').innerHTML = markTerms(c.b, c.terms);
+  bindTerms(el);
 
   const think = el.querySelector('.think');
   if (c.x) think.textContent = c.x; else think.remove();
@@ -242,7 +243,114 @@ window.addEventListener('keydown', e => {
   if (e.key === 'ArrowLeft') prev();
 });
 
-/* ---------- 主题切换 ---------- */
+/* ---------- 词条 ---------- */
+const GLOSSARY = window.__GLOSSARY__ || {};
+let activePop = null;
+let activeTerm = null;
+
+function escapeHtml(s) {
+  return s.replace(/[&<>"']/g, m => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[m]));
+}
+
+/**
+ * 正文里的词条包成 <span class="term">。
+ * 同一张卡里同一个词只标第一次出现；优先匹配长词。
+ */
+function markTerms(text, allowed) {
+  if (!text) return '';
+  let keys = Object.keys(GLOSSARY);
+  if (allowed && allowed.length) keys = keys.filter(k => allowed.indexOf(k) >= 0);
+  keys.sort((a, b) => b.length - a.length);
+  if (!keys.length) return escapeHtml(text);
+
+  const used = [];
+  let out = '', i = 0;
+  while (i < text.length) {
+    let hit = null;
+    for (const k of keys) {
+      if (text.startsWith(k, i) && used.indexOf(k) < 0) { hit = k; break; }
+    }
+    if (hit) {
+      used.push(hit);
+      out += '<span class="term" data-term="' + escapeHtml(hit) + '">' + escapeHtml(hit) + '</span>';
+      i += hit.length;
+    } else {
+      out += escapeHtml(text[i]);
+      i++;
+    }
+  }
+  return out;
+}
+
+function ensurePop() {
+  if (activePop) return activePop;
+  activePop = document.createElement('div');
+  activePop.id = 'pop';
+  document.body.appendChild(activePop);
+  return activePop;
+}
+
+function hidePop() {
+  if (activePop) activePop.classList.remove('on');
+  activeTerm = null;
+}
+
+function showPop(term, anchor) {
+  const def = GLOSSARY[term];
+  if (!def) return;
+  const pop = ensurePop();
+  pop.innerHTML = '<b>' + escapeHtml(term) + '</b>' + escapeHtml(def);
+
+  const r = anchor.getBoundingClientRect();
+  const pad = 12;
+  pop.style.visibility = 'hidden';
+  pop.classList.add('on');
+
+  const pw = pop.offsetWidth, ph = pop.offsetHeight;
+  let left = r.left + r.width / 2 - pw / 2;
+  left = Math.max(pad, Math.min(left, window.innerWidth - pw - pad));
+
+  const above = r.top - ph - 12;
+  let top;
+  if (above >= pad + 8) {
+    top = above;
+    pop.classList.remove('below');
+    pop.classList.add('above');
+  } else {
+    top = r.bottom + 12;
+    pop.classList.remove('above');
+    pop.classList.add('below');
+  }
+
+  pop.style.left = left + 'px';
+  pop.style.top = top + 'px';
+  pop.style.setProperty('--arrow-x', Math.max(14, Math.min(pw - 14, r.left + r.width / 2 - left)) + 'px');
+  pop.style.visibility = '';
+  activeTerm = term;
+}
+
+function bindTerms(el) {
+  el.querySelectorAll('.term').forEach(t => {
+    t.addEventListener('click', e => {
+      e.stopPropagation();
+      const term = t.dataset.term;
+      if (activeTerm === term && activePop && activePop.classList.contains('on')) hidePop();
+      else showPop(term, t);
+    });
+  });
+}
+
+document.addEventListener('touchstart', e => {
+  if (e.target.closest && e.target.closest('.term')) return;
+  hidePop();
+}, { passive: true });
+document.addEventListener('mousedown', e => {
+  if (e.target.closest && e.target.closest('.term')) return;
+  hidePop();
+});
+window.addEventListener('resize', hidePop);
+
+/* ---------- 主题选择 ---------- */
 function renderThemeList() {
   themeList.innerHTML = '';
   window.__THEMES__.forEach(t => {

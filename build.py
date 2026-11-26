@@ -31,12 +31,15 @@ THEME_META = {
 # 卡片必填字段
 REQUIRED = ('title', 'body')
 
+# 词条文件名（放在主题目录里，不当作卡片）
+GLOSSARY_FILE = 'glossary.json'
+
 
 def load_theme(tid):
     d = os.path.join(THEME_DIR, tid)
     cards, problems = [], []
     for name in sorted(os.listdir(d)):
-        if not name.endswith('.json'):
+        if not name.endswith('.json') or name == GLOSSARY_FILE:
             continue
         path = os.path.join(d, name)
         try:
@@ -58,6 +61,17 @@ def load_theme(tid):
             'x': raw.get('think', ''),
         })
     return cards, problems
+
+
+def load_glossary(tid):
+    path = os.path.join(THEME_DIR, tid, GLOSSARY_FILE)
+    if not os.path.isfile(path):
+        return {}
+    try:
+        with open(path, encoding='utf-8') as f:
+            return json.load(f)
+    except Exception:
+        return {}
 
 
 def collect():
@@ -103,7 +117,16 @@ def build():
     with open(os.path.join(SRC, 'app.js'), encoding='utf-8') as f:
         app = f.read()
 
-    data = 'window.__THEMES__ = ' + json.dumps(themes, ensure_ascii=False) + ';'
+    # 词条合并（多个主题的词条合到一起，同名以先出现的为准）
+    glossary = {}
+    for tid in sorted(os.listdir(THEME_DIR)):
+        if not os.path.isdir(os.path.join(THEME_DIR, tid)):
+            continue
+        for k, v in load_glossary(tid).items():
+            glossary.setdefault(k, v)
+
+    data = ('window.__THEMES__ = ' + json.dumps(themes, ensure_ascii=False) + ';\n'
+            + 'window.__GLOSSARY__ = ' + json.dumps(glossary, ensure_ascii=False) + ';')
 
     html = (shell
             .replace('/*__STYLE__*/', style)
@@ -119,6 +142,7 @@ def build():
     for t in themes:
         print('  %-10s %-6s %3d 张' % (t['id'], t['name'], len(t['cards'])))
     print('  合计 %d 张' % total)
+    print('  词条 %d 条' % len(glossary))
 
 
 if __name__ == '__main__':
