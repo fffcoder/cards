@@ -35,13 +35,20 @@ REQUIRED = ('title', 'body')
 GLOSSARY_FILE = 'glossary.json'
 
 
+def iter_card_files(theme_dir):
+    """遍历主题目录下的卡片文件（支持朝代子目录，跳过 _backup 等下划线目录）"""
+    for root, dirs, files in os.walk(theme_dir):
+        dirs[:] = sorted(x for x in dirs if not x.startswith('_'))
+        for name in sorted(files):
+            if name.endswith('.json') and name != GLOSSARY_FILE:
+                yield os.path.join(root, name)
+
+
 def load_theme(tid):
     d = os.path.join(THEME_DIR, tid)
     cards, problems = [], []
-    for name in sorted(os.listdir(d)):
-        if not name.endswith('.json') or name == GLOSSARY_FILE:
-            continue
-        path = os.path.join(d, name)
+    for path in iter_card_files(d):
+        name = os.path.relpath(path, d)
         try:
             with open(path, encoding='utf-8') as f:
                 raw = json.load(f)
@@ -125,7 +132,14 @@ def build():
         for k, v in load_glossary(tid).items():
             glossary.setdefault(k, v)
 
-    data = ('window.__THEMES__ = ' + json.dumps(themes, ensure_ascii=False) + ';\n'
+    # 内容指纹：卡片集合一变，阅读进度自动重置
+    import hashlib
+    fingerprint = hashlib.md5(
+        ''.join(c['t'] for t in themes for c in t['cards']).encode('utf-8')
+    ).hexdigest()[:10]
+
+    data = ('window.__VERSION__ = ' + repr(fingerprint) + ';\n'
+            + 'window.__THEMES__ = ' + json.dumps(themes, ensure_ascii=False) + ';\n'
             + 'window.__GLOSSARY__ = ' + json.dumps(glossary, ensure_ascii=False) + ';')
 
     html = (shell

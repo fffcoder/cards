@@ -26,12 +26,22 @@ const sheet = document.getElementById('sheet');
 const themeList = document.getElementById('themeList');
 
 /* ---------- 存储 ---------- */
-function seenKey() { return 'cards.seen.' + theme.id + '.v1'; }
+function seenKey() {
+  // 带上内容版本号：卡片内容一变，旧的阅读记录自动作废
+  return 'cards.seen.' + theme.id + '.' + (window.__VERSION__ || 'v1');
+}
 
 function loadSeen() {
   try {
-    const o = JSON.parse(localStorage.getItem(seenKey()) || '{}');
-    return (o && typeof o === 'object') ? o : {};
+    const raw = JSON.parse(localStorage.getItem(seenKey()) || '{}');
+    if (!raw || typeof raw !== 'object') return {};
+    // 卡片数量变化后，越界的旧索引会污染统计，这里直接丢掉
+    const clean = {};
+    for (const k in raw) {
+      const i = Number(k);
+      if (Number.isInteger(i) && i >= 0 && i < pool.length) clean[i] = raw[k];
+    }
+    return clean;
   } catch (e) { return {}; }
 }
 
@@ -41,7 +51,7 @@ function saveSeen() {
 
 /* ---------- 权重抽取 ---------- */
 function weightOf(i) {
-  const n = seen[i] || 0;
+  const n = Number(seen[i]) || 0;
   if (!n) return 1;
   return Math.max(CONFIG.floor, Math.pow(CONFIG.decay, n));
 }
@@ -57,10 +67,10 @@ function pick(exclude) {
   }
   if (total <= 0) {
     // 全部看过了：均匀随机，但尽量避开刚看过的
-    let i;
-    do { i = Math.floor(Math.random() * pool.length); }
-    while (exclude.indexOf(i) >= 0 && exclude.length < pool.length);
-    return i;
+    const avail = [];
+    for (let i = 0; i < pool.length; i++) if (exclude.indexOf(i) < 0) avail.push(i);
+    const src = avail.length ? avail : Array.from({ length: pool.length }, (_, i) => i);
+    return src[Math.floor(Math.random() * src.length)];
   }
   let r = Math.random() * total;
   for (let i = 0; i < weights.length; i++) {
@@ -73,7 +83,11 @@ function pick(exclude) {
 /* ---------- 顶部信息 ---------- */
 function seenCount() {
   let n = 0;
-  for (const k in seen) if (seen[k] > 0) n++;
+  for (const k in seen) {
+    // 只统计当前池子范围内的索引（卡片内容换过之后，旧记录会越界）
+    const i = Number(k);
+    if (seen[k] > 0 && i >= 0 && i < pool.length) n++;
+  }
   return n;
 }
 
