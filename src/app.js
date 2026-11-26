@@ -114,6 +114,9 @@ function markSeen(i) {
 }
 
 function render(i, fromDir) {
+  if (!pool.length) return;
+  i = Math.max(0, Math.min(i, pool.length - 1));
+
   stage.innerHTML = '';
   const el = makeCard(i);
   el.style.transition = 'none';
@@ -173,7 +176,10 @@ function bindSwipe(el) {
     el.style.opacity = String(Math.max(0.4, 1 - Math.abs(dx) / 460));
   }, { passive: false });
 
-  el.addEventListener('touchend', () => {
+  // 用 endIndex 防止重复触发（touchend 和 touchcancel 只会有一个生效）
+  let endToken = 0;
+
+  function finish() {
     if (!active) return;
     active = false;
     el.style.transition = '';
@@ -181,22 +187,27 @@ function bindSwipe(el) {
     if (dx <= -CONFIG.threshold) {
       el.style.transform = 'translate3d(-120vw, -50%, 0) rotate(-10deg)';
       el.style.opacity = '0';
-      setTimeout(next, 160);
+      // 兜底：万一动画回调没跑，也不能把界面卡死
+      const token = ++endToken;
+      setTimeout(() => { if (token === endToken) next(); }, 170);
     } else if (dx >= CONFIG.threshold) {
       el.style.transform = 'translate3d(120vw, -50%, 0) rotate(10deg)';
       el.style.opacity = '0';
-      setTimeout(prev, 160);
+      const token = ++endToken;
+      setTimeout(() => { if (token === endToken) prev(); }, 170);
     } else {
       place(el, 0, 1, 1);
     }
-  }, { passive: true });
+  }
 
+  el.addEventListener('touchend', finish, { passive: true });
   el.addEventListener('touchcancel', () => {
     if (!active) return;
     active = false;
     el.style.transition = '';
     place(el, 0, 1, 1);
   }, { passive: true });
+
 
   /* 桌面 / 鼠标 */
   let mx = 0, down = false;
