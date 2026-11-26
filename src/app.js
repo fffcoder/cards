@@ -130,8 +130,9 @@ function fillCard(el, i) {
 }
 
 /**
- * 始终只有两张卡在动：current（当前）和 incoming（新滑进来的）。
- * 无论怎么连滑，当前卡片的 opacity 永远被设回 1，不会停在 0。
+ * 换卡：总是「当面这一张原地换内容」，不做双卡叠层动画。
+ * 上下滑动时卡片跟手移动，松手后归位；成功翻页就用新内容复位。
+ * 这样无论多快连滑，都不会出现卡片飞出后没有新卡接管、或者透明度停在 0。
  */
 function render(i, fromDir) {
   if (!pool.length) return;
@@ -140,54 +141,28 @@ function render(i, fromDir) {
   const dir = fromDir || 0;
   resetGestures();
 
-  // 把上一轮遗留的 incoming 收掉
-  stage.querySelectorAll('.card').forEach((c, idx, arr) => {
-    if (idx < arr.length - 1) c.remove();
-  });
+  // 清掉多余卡片，只留一张
+  const cards = stage.querySelectorAll('.card');
+  for (let k = 1; k < cards.length; k++) cards[k].remove();
 
-  let cur = stage.querySelector('.card');
-  if (!cur) {
-    cur = document.createElement('div');
-    cur.className = 'card';
-    stage.appendChild(cur);
-    fillCard(cur, i);
-    cur.style.transition = 'none';
-    place(cur, 0, 1, 1);
-    bindSwipe(cur);
-    return;
+  let el = cards[0];
+  if (!el) {
+    el = document.createElement('div');
+    el.className = 'card';
+    stage.appendChild(el);
   }
 
-  if (dir === 0) {
-    // 切主题 / 初始化：直接替换内容
-    fillCard(cur, i);
-    cur.style.transition = '';
-    cur.style.pointerEvents = '';
-    place(cur, 0, 1, 1);
-    bindSwipe(cur);
-    return;
-  }
+  fillCard(el, i);
+  bindSwipe(el);
 
-  // 新卡从滑动来的方向进入
-  const incoming = document.createElement('div');
-  incoming.className = 'card';
-  stage.appendChild(incoming);
-  fillCard(incoming, i);
-  bindSwipe(incoming);
+  // 新内容从滑动来的方向轻轻归位
+  el.style.transition = 'none';
+  place(el, dir === 0 ? 0 : -(dir * 26), 1, 1);
 
-  incoming.style.transition = 'none';
-  place(incoming, dir * 46, 0.96, 0);
   requestAnimationFrame(() => {
-    incoming.style.transition = '';
-    place(incoming, 0, 1, 1);
+    el.style.transition = '';
+    place(el, 0, 1, 1);
   });
-
-  // 旧卡离开
-  const old = cur;
-  old.style.transition = '';
-  old.style.pointerEvents = 'none';
-  old.style.transform = 'translate3d(0, calc(-50% + ' + (-dir * 46) + 'vh), 0)';
-  old.style.opacity = '0';
-  setTimeout(() => { if (old.parentNode) old.remove(); }, 420);
 }
 
 function next() {
@@ -197,9 +172,16 @@ function next() {
 }
 
 function prev() {
-  if (history.length < 2) return;
+  // 已经在第一张，没有更早的记录了
+  if (history.length < 2) return false;
   history.pop();
   render(history[history.length - 1], -1);
+  return true;
+}
+
+/** 是否还能往上翻（用于手势判断，避免卡片飞走却换不出新卡） */
+function canPrev() {
+  return history.length >= 2;
 }
 
 /* ---------- 手势（上下滑，像短视频那样一屏一张） ---------- */
@@ -304,9 +286,14 @@ function resetGestures() {
 /** 手势确认：dir=-1 下一张（上滑），1 上一张（下滑） */
 function fan(el, dir) {
   hidePop();
-  el.style.transition = '';
-  el.style.transform = 'translate3d(0, calc(-50% + ' + (dir * -1) * 120 + 'vh), 0)';
-  el.style.opacity = '0';
+
+  // 第一张再往下滑：没有上一张，把卡片弹回去，不留空白
+  if (dir > 0 && !canPrev()) {
+    el.style.transition = '';
+    place(el, 0, 1, 1);
+    return;
+  }
+
   if (dir < 0) next(); else prev();
 }
 
