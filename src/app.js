@@ -195,115 +195,33 @@ function next() {
   render(pick(recent), 1);
 }
 
-/* ---------- 手势（上下滑，像短视频那样一屏一张） ---------- */
-let gestureLock = false;
-let currentCleanup = null;
+/* ---------- 换卡 ---------- */
+// 只靠底部的按钮切下一张，卡片不再跟手滑动
 
 function bindSwipe(el) {
-  el.addEventListener('touchstart', onTouchStart, { passive: true });
-
-  // 鼠标 / 桌面预览
-  let my = 0, down = false;
-  el.addEventListener('mousedown', e => {
-    down = true;
-    my = e.clientY;
-    el.style.transition = 'none';
-  });
-  window.addEventListener('mousemove', e => {
-    if (!down) return;
-    const d = e.clientY - my;
-    el.style.transform = 'translate3d(0, calc(-50% + ' + d + 'px), 0)';
-  });
-  window.addEventListener('mouseup', e => {
-    if (!down) return;
-    down = false;
-    el.style.transition = '';
-    const d = e.clientY - my;
-    if (d <= -CONFIG.threshold) fan(el, -1);
-    else place(el, 0, 1, 1);
-  });
+  // 预留：当前版本不绑定滑动手势
 }
 
-function onTouchStart(e) {
-  if (e.touches.length !== 1 || gestureLock) return;
-  const el = e.currentTarget;
-  const x0 = e.touches[0].clientX;
-  const y0 = e.touches[0].clientY;
-  let dy = 0, axis = null, done = false;
+function resetGestures() {}
 
-  el.style.transition = 'none';
-
-  function move(ev) {
-    if (!(ev.touches && ev.touches.length)) return;
-    const tx = ev.touches[0].clientX;
-    const ty = ev.touches[0].clientY;
-    dy = ty - y0;
-    const dx = tx - x0;
-
-    if (axis === null && (Math.abs(dx) > CONFIG.axisLock || Math.abs(dy) > CONFIG.axisLock)) {
-      axis = Math.abs(dy) > Math.abs(dx) ? 'y' : 'x';
-    }
-    if (axis === 'x') return;
-
-    if (ev.cancelable) ev.preventDefault();
-    const damped = dy * 0.92;
-    el.style.transform = 'translate3d(0, calc(-50% + ' + damped + 'px), 0)';
-    el.style.opacity = String(Math.max(0.35, 1 - Math.abs(damped) / 620));
-  }
-
-  function cleanup() {
-    window.removeEventListener('touchmove', move);
-    window.removeEventListener('touchend', end);
-    window.removeEventListener('touchcancel', cancel);
-    currentCleanup = null;
-  }
-
-  function end() {
-    if (done) return;
-    done = true;
-    cleanup();
-    if (axis === 'x') return;
-
-    el.style.transition = '';
-    if (dy <= -CONFIG.threshold) fan(el, -1);       // 上滑 → 下一张
-    else place(el, 0, 1, 1);                        // 下滑 → 弹回
-  }
-
-  function cancel() {
-    if (done) return;
-    done = true;
-    cleanup();
-    el.style.transition = '';
-    place(el, 0, 1, 1);
-  }
-
-  currentCleanup = cleanup;
-  window.addEventListener('touchmove', move, { passive: false });
-  window.addEventListener('touchend', end, { passive: true });
-  window.addEventListener('touchcancel', cancel, { passive: true });
-}
-
-/** 收起旧的手势监听并解锁 */
-function resetGestures() {
-  if (typeof currentCleanup === 'function') {
-    try { currentCleanup(); } catch (e) {}
-    currentCleanup = null;
-  }
-  gestureLock = false;
-}
-
-/** 手势确认：dir=-1 下一张（上滑），1 上一张（下滑） */
-function fan(el, dir) {
+/** 点按钮：切到下一张 */
+function nextCard() {
   hidePop();
+  const el = stage.querySelector('.card');
 
-  // 只支持往下滑（上滑）切下一张，反方向一律弹回原位
-  if (dir > 0) {
-    el.style.transition = '';
-    place(el, 0, 1, 1);
+  if (!el) {
+    render(pick([]), 0);
     return;
   }
 
-  next();
+  // 轻轻往上一推，然后换内容
+  el.style.transition = '';
+  el.style.transform = 'translate3d(0, calc(-50% - 40px), 0)';
+  el.style.opacity = '0';
+
+  setTimeout(() => {
+    next();
+  }, 130);
 }
 
 /* ---------- 键盘 ---------- */
@@ -312,7 +230,10 @@ window.addEventListener('keydown', e => {
     if (e.key === 'Escape') closeSheet();
     return;
   }
-  if (e.key === 'ArrowRight' || e.key === 'ArrowDown') next();
+  if (e.key === 'ArrowRight' || e.key === 'ArrowDown' || e.key === ' ') {
+    e.preventDefault();
+    nextCard();
+  }
 });
 
 /* ---------- 词条 ---------- */
@@ -457,6 +378,7 @@ function switchTheme(id) {
 }
 
 document.getElementById('themeBtn').onclick = openSheet;
+document.getElementById('nextBtn').onclick = nextCard;
 document.getElementById('closeSheet').onclick = closeSheet;
 sheet.addEventListener('click', e => { if (e.target === sheet) closeSheet(); });
 

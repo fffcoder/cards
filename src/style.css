@@ -101,11 +101,37 @@ header {
 
 footer {
   flex: 0 0 auto;
-  padding: 14px 24px 0;
-  text-align: center;
-  font-size: 11.5px;
-  color: var(--fg-faint);
-  letter-spacing: .08em;
+  padding: 10px 24px calc(env(safe-area-inset-bottom) + 14px);
+  display: flex;
+  justify-content: center;
+}
+
+#nextBtn {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 13px 30px;
+  border: none;
+  border-radius: 999px;
+  background: rgba(217, 191, 138, .12);
+  box-shadow: 0 0 0 1px rgba(217, 191, 138, .22) inset;
+  color: var(--accent);
+  font-family: inherit;
+  font-size: 14px;
+  letter-spacing: .1em;
+  cursor: pointer;
+  transition: transform .12s ease, background .2s ease, opacity .2s ease;
+  -webkit-user-select: none;
+  user-select: none;
+}
+#nextBtn i {
+  font-style: normal;
+  font-size: 13px;
+  opacity: .8;
+}
+#nextBtn:active {
+  transform: scale(.96);
+  background: rgba(217, 191, 138, .2);
 }
 
 /* ---------- 卡片 ---------- */
