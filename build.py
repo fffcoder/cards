@@ -24,15 +24,15 @@ OUT = os.path.join(ROOT, 'index.html')
 
 # 主题元信息：目录名 -> (显示名, 简介)
 # 新增主题时在这里加一行，否则用目录名兜底
+# 主题定义：一个主题可以包含多个卡片目录（按顺序拼接）
 THEME_META = {
-    'xianqin': ('先秦', '夏商周到战国'),
-    'qinhan': ('秦汉', '秦到三国'),
-    'weijin': ('魏晋南北朝', '西晋到隋前'),
-    'suitang': ('隋唐', '隋到五代'),
-    'songyuan': ('宋元', '北宋到元末'),
-    'ming': ('明朝', '洪武到南明'),
-    'qing': ('清朝', '入关到逊位'),
-    'modern': ('近代史', '1840 到 1949'),
+    'xianqin': ('先秦', '夏商周到战国', ['xianqin']),
+    'qinhan':  ('秦汉', '秦到三国', ['qinhan']),
+    'weijin':  ('魏晋南北朝', '西晋到隋前', ['weijin']),
+    'suitang': ('隋唐', '隋到五代', ['suitang']),
+    'songyuan':('宋元', '北宋到元末', ['songyuan']),
+    'mingqing':('明清', '洪武到逊位', ['ming', 'qing']),
+    'modern':  ('近代史', '1840 到 1949', ['modern']),
 }
 
 # 卡片必填字段
@@ -42,7 +42,7 @@ REQUIRED = ('title', 'body')
 GLOSSARY_FILE = 'glossary.json'
 
 # 排序，决定主题列表的顺序
-THEME_ORDER = ['xianqin', 'qinhan', 'weijin', 'suitang', 'songyuan', 'ming', 'qing', 'modern']
+THEME_ORDER = ['xianqin', 'qinhan', 'weijin', 'suitang', 'songyuan', 'mingqing', 'modern']
 
 # 虚拟主题：把其他主题的卡片合在一起
 ALL_THEME = {'id': 'all', 'name': '全部', 'desc': '所有朝代一起看'}
@@ -112,17 +112,23 @@ def collect():
     if not os.path.isdir(THEME_DIR):
         sys.exit('没有 themes/ 目录')
 
-    order = {k: i for i, k in enumerate(THEME_ORDER)}
-    for tid in sorted(os.listdir(THEME_DIR), key=lambda x: (order.get(x, 99), x)):
-        d = os.path.join(THEME_DIR, tid)
-        if not os.path.isdir(d) or tid.startswith('_'):
+    for tid in THEME_ORDER:
+        meta = THEME_META.get(tid)
+        if not meta:
             continue
-        cards, probs = load_theme(tid)
-        problems.extend('%s/%s' % (tid, p) for p in probs)
+        name, desc, dirs = meta
+        cards = []
+        for dname in dirs:
+            d = os.path.join(THEME_DIR, dname)
+            if not os.path.isdir(d):
+                problems.append('缺少目录 %s' % dname)
+                continue
+            part, probs = load_theme(dname)
+            problems.extend('%s/%s' % (dname, p) for p in probs)
+            cards.extend(part)
         if not cards:
             problems.append('%s 没有卡片' % tid)
             continue
-        name, desc = THEME_META.get(tid, (tid, ''))
         themes.append({
             'id': tid,
             'name': name,
@@ -164,7 +170,8 @@ def build():
     # 词条合并（多个主题的词条合到一起，同名以先出现的为准）
     glossary = {}
     for tid in sorted(os.listdir(THEME_DIR)):
-        if not os.path.isdir(os.path.join(THEME_DIR, tid)):
+        p = os.path.join(THEME_DIR, tid)
+        if not os.path.isdir(p) or tid.startswith('_'):
             continue
         for k, v in load_glossary(tid).items():
             glossary.setdefault(k, v)
