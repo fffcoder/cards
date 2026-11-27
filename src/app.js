@@ -25,6 +25,30 @@ const stage = document.getElementById('stage');
 const sheet = document.getElementById('sheet');
 const themeList = document.getElementById('themeList');
 
+/* ---------- 主题拼装 ---------- */
+// 「全部」这类主题只存来源列表，启动时在内存里拼一次，避免页面里存重复数据
+function hydrateThemes() {
+  const byId = {};
+  // 先把真实主题的卡片收起来
+  window.__THEMES__.forEach(t => { if (t.cards) byId[t.id] = t.cards; });
+  // 再给「全部」这类主题拼出完整的卡片数组
+  window.__THEMES__.forEach(t => {
+    if ((!t.cards || !t.cards.length) && t.parts) {
+      const merged = [];
+      t.parts.forEach(id => {
+        const src = byId[id];
+        if (src) for (let i = 0; i < src.length; i++) merged.push(src[i]);
+      });
+      t.cards = merged;
+    }
+  });
+  // 兜底：任何主题都没有卡片时，退回第一个有卡片的主题
+  if (!window.__THEMES__.some(t => t.cards && t.cards.length && t.id !== 'all')) {
+    console.error('没有可用的卡片数据');
+  }
+}
+hydrateThemes();
+
 /* ---------- 存储 ---------- */
 function seenKey() {
   // 带上内容版本号：卡片内容一变，旧的阅读记录自动作废
@@ -419,7 +443,7 @@ function renderThemeList() {
     const b = document.createElement('button');
     b.className = 'titem' + (t.id === theme.id ? ' now' : '');
     b.innerHTML =
-      '<div><span>' + t.name + '</span><small>' + t.desc + '</small></div>' +
+      '<div><span>' + t.name + '</span><small>' + t.desc.replace(t.name, '').replace(/^\s*·?\s*/, '') + '</small></div>' +
       '<span class="dot">●</span>';
     b.onclick = () => switchTheme(t.id);
     themeList.appendChild(b);

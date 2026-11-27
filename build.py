@@ -27,6 +27,7 @@ OUT = os.path.join(ROOT, 'index.html')
 THEME_META = {
     'ming': ('明朝', '洪武到南明'),
     'qing': ('清朝', '入关到逊位'),
+    'modern': ('近代史', '1840 到 1949'),
 }
 
 # 卡片必填字段
@@ -36,7 +37,10 @@ REQUIRED = ('title', 'body')
 GLOSSARY_FILE = 'glossary.json'
 
 # 排序，决定主题列表的顺序
-THEME_ORDER = ['ming', 'qing']
+THEME_ORDER = ['ming', 'qing', 'modern']
+
+# 虚拟主题：把其他主题的卡片合在一起
+ALL_THEME = {'id': 'all', 'name': '全部', 'desc': '所有朝代一起看'}
 
 
 def iter_card_files(theme_dir):
@@ -120,6 +124,16 @@ def collect():
             'desc': ('%s · ' % desc if desc else '') + '%d 张' % len(cards),
             'cards': cards,
         })
+    # 「全部」不重复存卡片，只记个来源列表，由页面自己拼起来
+    if len(themes) > 1:
+        total = sum(len(t['cards']) for t in themes)
+        themes.append({
+            'id': ALL_THEME['id'],
+            'name': ALL_THEME['name'],
+            'desc': '%s · %d 张' % (ALL_THEME['desc'], total),
+            'parts': [t['id'] for t in themes if t.get('cards')],
+        })
+
     return themes, problems
 
 
@@ -153,7 +167,7 @@ def build():
     # 内容指纹：卡片集合一变，阅读进度自动重置
     import hashlib
     fingerprint = hashlib.md5(
-        ''.join(c['t'] for t in themes for c in t['cards']).encode('utf-8')
+        ''.join(c['t'] for t in themes for c in t.get('cards', [])).encode('utf-8')
     ).hexdigest()[:10]
 
     data = ('window.__VERSION__ = ' + repr(fingerprint) + ';\n'
@@ -169,11 +183,13 @@ def build():
         with open(OUT, 'w', encoding='utf-8') as f:
             f.write(html)
 
-    total = sum(len(t['cards']) for t in themes)
+    total = sum(len(t.get('cards', [])) for t in themes)
     print('%s %s' % ('检查通过' if '--check' in sys.argv else '生成', OUT))
     for t in themes:
-        print('  %-10s %-6s %3d 张' % (t['id'], t['name'], len(t['cards'])))
-    print('  合计 %d 张' % total)
+        n = len(t.get('cards', [])) if 'cards' in t else sum(
+            len(x.get('cards', [])) for x in themes if x['id'] in t.get('parts', []))
+        print('  %-10s %-6s %3d 张' % (t['id'], t['name'], n))
+    print('  合计 %d 张（不含全部）' % total)
     print('  词条 %d 条' % len(glossary))
 
 
