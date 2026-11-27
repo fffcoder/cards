@@ -25,6 +25,11 @@ OUT = os.path.join(ROOT, 'index.html')
 # 主题元信息：目录名 -> (显示名, 简介)
 # 新增主题时在这里加一行，否则用目录名兜底
 THEME_META = {
+    'xianqin': ('先秦', '夏商周到战国'),
+    'qinhan': ('秦汉', '秦到三国'),
+    'weijin': ('魏晋南北朝', '西晋到隋前'),
+    'suitang': ('隋唐', '隋到五代'),
+    'songyuan': ('宋元', '北宋到元末'),
     'ming': ('明朝', '洪武到南明'),
     'qing': ('清朝', '入关到逊位'),
     'modern': ('近代史', '1840 到 1949'),
@@ -37,7 +42,7 @@ REQUIRED = ('title', 'body')
 GLOSSARY_FILE = 'glossary.json'
 
 # 排序，决定主题列表的顺序
-THEME_ORDER = ['ming', 'qing', 'modern']
+THEME_ORDER = ['xianqin', 'qinhan', 'weijin', 'suitang', 'songyuan', 'ming', 'qing', 'modern']
 
 # 虚拟主题：把其他主题的卡片合在一起
 ALL_THEME = {'id': 'all', 'name': '全部', 'desc': '所有朝代一起看'}
