@@ -25,7 +25,8 @@ OUT = os.path.join(ROOT, 'index.html')
 # 主题元信息：目录名 -> (显示名, 简介)
 # 新增主题时在这里加一行，否则用目录名兜底
 THEME_META = {
-    'history': ('历史', '三皇五帝到民国'),
+    'ming': ('明朝', '洪武到南明'),
+    'qing': ('清朝', '入关到逊位'),
 }
 
 # 卡片必填字段
@@ -33,6 +34,9 @@ REQUIRED = ('title', 'body')
 
 # 词条文件名（放在主题目录里，不当作卡片）
 GLOSSARY_FILE = 'glossary.json'
+
+# 排序，决定主题列表的顺序
+THEME_ORDER = ['ming', 'qing']
 
 
 def iter_card_files(theme_dir):
@@ -71,6 +75,19 @@ def load_theme(tid):
 
 
 def load_glossary(tid):
+    # 词条可以放在 themes/glossary.json（通用），也可以放在主题目录里
+    for path in (os.path.join(THEME_DIR, GLOSSARY_FILE),
+                 os.path.join(THEME_DIR, tid, GLOSSARY_FILE)):
+        if os.path.isfile(path):
+            try:
+                with open(path, encoding='utf-8') as f:
+                    return json.load(f)
+            except Exception:
+                pass
+    return {}
+
+
+def _load_glossary_old(tid):
     path = os.path.join(THEME_DIR, tid, GLOSSARY_FILE)
     if not os.path.isfile(path):
         return {}
@@ -86,9 +103,10 @@ def collect():
     if not os.path.isdir(THEME_DIR):
         sys.exit('没有 themes/ 目录')
 
-    for tid in sorted(os.listdir(THEME_DIR)):
+    order = {k: i for i, k in enumerate(THEME_ORDER)}
+    for tid in sorted(os.listdir(THEME_DIR), key=lambda x: (order.get(x, 99), x)):
         d = os.path.join(THEME_DIR, tid)
-        if not os.path.isdir(d):
+        if not os.path.isdir(d) or tid.startswith('_'):
             continue
         cards, probs = load_theme(tid)
         problems.extend('%s/%s' % (tid, p) for p in probs)

@@ -85,12 +85,12 @@ python3 build.py
 
 **加卡片**：往 `themes/history/` 放 json，文件名接着编号。
 
-**加主题**：新建 `themes/<id>/` 放卡片，再在 `build.py` 的 `THEME_META` 里登记名字：
+**加主题**：新建 `themes/<id>/` 放卡片，再在 `build.py` 的 `THEME_META` 和 `THEME_ORDER` 里登记：
 
 ```python
 THEME_META = {
-    'history': ('历史', '三皇五帝到民国'),
-    'psych':   ('心理学', '认知与情绪'),
+    'ming': ('明朝', '洪武到南明'),
+    'qing': ('清朝', '入关到逊位'),
 }
 ```
 

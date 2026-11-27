@@ -93,8 +93,6 @@ function seenCount() {
 
 function updateHeader() {
   document.getElementById('themeName').textContent = theme.name;
-  document.getElementById('seen').innerHTML =
-    '已看 <b>' + seenCount() + '</b> / ' + pool.length;
 }
 
 /* ---------- 渲染 ---------- */
@@ -463,6 +461,8 @@ sheet.addEventListener('click', e => { if (e.target === sheet) closeSheet(); });
   if (window.__THEMES__.length < 2) {
     document.getElementById('themeBtn').style.display = 'none';
   }
+  const seenEl = document.getElementById('seen');
+  if (seenEl) seenEl.remove();
 
   updateHeader();
   render(pick([]), 0);
