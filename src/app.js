@@ -204,9 +204,17 @@ function bindSwipe(el) {
 
 function resetGestures() {}
 
+/** 轻触反馈（iOS 支持时） */
+function haptic(ms) {
+  try {
+    if (navigator.vibrate) navigator.vibrate(ms || 8);
+  } catch (e) {}
+}
+
 /** 点按钮：切到下一张 */
 function nextCard() {
   hidePop();
+  haptic(8);
   const el = stage.querySelector('.card');
 
   if (!el) {
