@@ -52,7 +52,7 @@ html, body {
 
 /* ---------- 骨架 ---------- */
 #deck {
-  position: fixed;
+  position: absolute;
   inset: 0;
   display: flex;
   flex-direction: column;

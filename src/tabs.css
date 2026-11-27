@@ -1,0 +1,62 @@
+
+/* ===== Tab 切换 ===== */
+.tab-panel {
+  display: none;
+  position: fixed;
+  inset: 0;
+  bottom: calc(56px + env(safe-area-inset-bottom));
+  overflow: hidden;
+}
+.tab-panel.on { display: block; }
+#panel-articles { overflow-y: auto; -webkit-overflow-scrolling: touch; }
+body.reading #panel-articles { overflow-y: auto; }
+
+#tabbar {
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 40;
+  height: calc(56px + env(safe-area-inset-bottom));
+  padding-bottom: env(safe-area-inset-bottom);
+  display: flex;
+  background: rgba(14, 13, 11, .92);
+  backdrop-filter: blur(18px);
+  -webkit-backdrop-filter: blur(18px);
+  border-top: 1px solid rgba(255, 255, 255, .06);
+}
+.tab {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 3px;
+  background: none;
+  border: none;
+  color: #5f584f;
+  font-family: inherit;
+  font-size: 11px;
+  letter-spacing: .06em;
+  cursor: pointer;
+  transition: color .18s ease;
+}
+.tab svg { width: 21px; height: 21px; }
+.tab.on { color: var(--accent); }
+
+/* 卡片页在 Tab 下的高度修正 */
+#panel-cards #deck {
+  position: absolute;
+  inset: 0;
+  height: 100%;
+  max-height: 100%;
+  padding-bottom: 0;
+}
+#panel-cards #deck header { padding-top: calc(env(safe-area-inset-top) + 6px); }
+#panel-cards footer { padding: 10px 20px 6px; }
+#panel-cards footer #nextBtn { padding: 12px 30px; }
+
+/* 史论页在 Tab 下的滚动修正 */
+#panel-articles .topbar { position: sticky; top: 0; padding-top: 12px; }
+#panel-articles #list { padding-bottom: 28px; }
+#panel-articles #reader { padding-bottom: 40px; }

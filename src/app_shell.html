@@ -1,0 +1,87 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="史论">
+<meta name="theme-color" content="#0e0d0b">
+<link rel="apple-touch-icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 180 180'%3E%3Crect width='180' height='180' rx='40' fill='%230e0d0b'/%3E%3Cpath d='M50 44h80M50 74h80M50 104h56' stroke='%23d9bf8a' stroke-width='6' stroke-linecap='round'/%3E%3Cpath d='M126 118l14 20' stroke='%23d9bf8a' stroke-width='6' stroke-linecap='round'/%3E%3Ccircle cx='118' cy='110' r='16' fill='none' stroke='%23d9bf8a' stroke-width='6'/%3E%3C/svg%3E">
+<title>史论</title>
+<style>
+/*__STYLE__*/
+</style>
+</head>
+<body>
+
+<!-- 阅读进度 -->
+<div id="progress"></div>
+
+<!-- ============ 卡片 Tab ============ -->
+<section class="tab-panel" id="panel-cards">
+  <div id="deck">
+    <header>
+      <button id="themeBtn"><span id="themeName"></span><i>⌄</i></button>
+    </header>
+    <div id="stage"></div>
+    <footer><button id="nextBtn"><span>下一张</span><i>↓</i></button></footer>
+  </div>
+  <div id="sheet">
+    <h3>选择主题</h3>
+    <div id="themeList"></div>
+    <button id="closeSheet">关闭</button>
+  </div>
+  <div id="pop"></div>
+</section>
+
+<!-- ============ 史论 Tab ============ -->
+<section class="tab-panel" id="panel-articles">
+  <div class="topbar">
+    <div class="bar-row">
+      <button id="backBtn">‹ 返回</button>
+      <div class="brand">史论<small>历史文章集</small></div>
+    </div>
+    <div class="search">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <circle cx="11" cy="11" r="7"></circle>
+        <path d="M20 20l-4-4"></path>
+      </svg>
+      <input id="q" type="search" placeholder="搜索标题、正文、年代、标签" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false">
+      <button id="clearBtn" aria-label="清空">✕</button>
+    </div>
+  </div>
+  <main id="list"></main>
+  <article id="reader"></article>
+</section>
+
+<!-- ============ Tab 栏 ============ -->
+<nav id="tabbar">
+  <button class="tab on" data-tab="cards">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
+      <rect x="3" y="6" width="18" height="13" rx="2.5"></rect>
+      <path d="M7 10h10M7 14h6"></path>
+    </svg>
+    <span>卡片</span>
+  </button>
+  <button class="tab" data-tab="articles">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
+      <path d="M5 4h11l4 4v12a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V5a1 1 0 0 1 1-1z"></path>
+      <path d="M8 10h8M8 14h8M8 18h5"></path>
+    </svg>
+    <span>史论</span>
+  </button>
+</nav>
+
+<script>
+/*__DATA__*/
+</script>
+<script>
+/*__CARDS_APP__*/
+</script>
+<script>
+/*__ARTICLES_APP__*/
+</script>
+
+</body>
+</html>
