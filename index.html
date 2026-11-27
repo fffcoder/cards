@@ -319,7 +319,7 @@ footer {
     <button id="themeBtn"><span id="themeName"></span><i>⌄</i></button>
   </header>
   <div id="stage"></div>
-  <footer>上滑下一张 · 下滑上一张</footer>
+  <footer>上滑下一张</footer>
 </div>
 
 <div id="sheet">
@@ -524,22 +524,11 @@ function render(i, fromDir) {
 }
 
 function next() {
+  // 只记最近几张用于去重，不再支持回看
   history.push(curIdx);
-  const recent = history.slice(-CONFIG.recent).concat([curIdx]).filter(x => x >= 0);
+  if (history.length > CONFIG.recent + 2) history.shift();
+  const recent = history.slice(-CONFIG.recent).filter(x => x >= 0);
   render(pick(recent), 1);
-}
-
-function prev() {
-  // 已经在第一张，没有更早的记录了
-  if (history.length < 2) return false;
-  history.pop();
-  render(history[history.length - 1], -1);
-  return true;
-}
-
-/** 是否还能往上翻（用于手势判断，避免卡片飞走却换不出新卡） */
-function canPrev() {
-  return history.length >= 2;
 }
 
 /* ---------- 手势（上下滑，像短视频那样一屏一张） ---------- */
@@ -567,7 +556,6 @@ function bindSwipe(el) {
     el.style.transition = '';
     const d = e.clientY - my;
     if (d <= -CONFIG.threshold) fan(el, -1);
-    else if (d >= CONFIG.threshold) fan(el, 1);
     else place(el, 0, 1, 1);
   });
 }
@@ -614,8 +602,7 @@ function onTouchStart(e) {
 
     el.style.transition = '';
     if (dy <= -CONFIG.threshold) fan(el, -1);       // 上滑 → 下一张
-    else if (dy >= CONFIG.threshold) fan(el, 1);    // 下滑 → 上一张
-    else place(el, 0, 1, 1);
+    else place(el, 0, 1, 1);                        // 下滑 → 弹回
   }
 
   function cancel() {
@@ -645,14 +632,14 @@ function resetGestures() {
 function fan(el, dir) {
   hidePop();
 
-  // 第一张再往下滑：没有上一张，把卡片弹回去，不留空白
-  if (dir > 0 && !canPrev()) {
+  // 只支持往下滑（上滑）切下一张，反方向一律弹回原位
+  if (dir > 0) {
     el.style.transition = '';
     place(el, 0, 1, 1);
     return;
   }
 
-  if (dir < 0) next(); else prev();
+  next();
 }
 
 /* ---------- 键盘 ---------- */
@@ -661,8 +648,7 @@ window.addEventListener('keydown', e => {
     if (e.key === 'Escape') closeSheet();
     return;
   }
-  if (e.key === 'ArrowRight') next();
-  if (e.key === 'ArrowLeft') prev();
+  if (e.key === 'ArrowRight' || e.key === 'ArrowDown') next();
 });
 
 /* ---------- 词条 ---------- */
