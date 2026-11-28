@@ -92,6 +92,7 @@ function renderList() {
 
   const items = ARTS
     .map(a => ({ a, s: score(a, terms) }))
+    .filter(x => x.a.track !== '导航')
     .filter(x => x.s > 0)
     .sort((x, y) => (terms.length ? y.s - x.s : 0) || (y.a.date > x.a.date ? 1 : -1));
 
@@ -100,7 +101,14 @@ function renderList() {
     return;
   }
 
-  listEl.innerHTML = items.map(({ a }) => {
+  const nav = ARTS.find(x => x.track === '导航');
+  const navCard = (nav && !terms.length) ? `<button class="art nav-card" data-id="${nav.id}">
+      <div class="meta"><span>从这里开始</span></div>
+      <h2>${esc(nav.title)}</h2>
+      <p class="sub">${esc(nav.subtitle)}</p>
+    </button>` : '';
+
+  listEl.innerHTML = navCard + items.map(({ a }) => {
     const snip = snippet(a, terms);
     return `<button class="art" data-id="${a.id}">
       <div class="meta">
@@ -134,6 +142,14 @@ function openArticle(id) {
     <div class="body">${a.html}</div>
     <div class="reading-meta">${a.words} 字 · ${a.tags.map(t => '#' + t).join(' ')}</div>
   `;
+
+  // 文内链接：跳到对应文章
+  readerEl.querySelectorAll('a[data-article]').forEach(link => {
+    link.onclick = e => {
+      e.preventDefault();
+      openArticle(link.dataset.article);
+    };
+  });
 
   document.body.classList.add('reading');
   window.scrollTo(0, 0);

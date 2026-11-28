@@ -35,7 +35,13 @@ def inline(text):
     text = re.sub(r'`([^`]+)`', r'<code>\1</code>', text)
     text = re.sub(r'\*\*([^*]+)\*\*', r'<strong>\1</strong>', text)
     text = re.sub(r'(?<!\*)\*([^*]+)\*(?!\*)', r'<em>\1</em>', text)
-    text = re.sub(r'\[([^\]]+)\]\(([^)]+)\)', r'<a href="\2" target="_blank" rel="noopener">\1</a>', text)
+    def link(m):
+        label, href = m.group(1), m.group(2)
+        if href.endswith('.md'):
+            aid = href[:-3].split('/')[-1]
+            return '<a href="#%s" data-article="%s">%s</a>' % (aid, aid, label)
+        return '<a href="%s" target="_blank" rel="noopener">%s</a>' % (href, label)
+    text = re.sub(r'\[([^\]]+)\]\(([^)]+)\)', link, text)
     return text
 
 
@@ -159,6 +165,8 @@ def load_articles():
             'era': meta.get('era', ''),
             'tags': meta.get('tags', '').split(),
             'date': meta.get('date', ''),
+            'track': meta.get('track', ''),
+            'order': int(meta.get('order', 99) or 99),
             'html': html,
             'text': plain,
             'words': len(re.findall(r'[\u4e00-\u9fa5]', plain)),

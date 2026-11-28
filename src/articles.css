@@ -330,3 +330,11 @@ body.reading #progress { opacity: .75; }
   #reader .body { font-size: 16px; }
   #reader h1 { font-size: 23px; }
 }
+
+/* 脉络入口 */
+.nav-card {
+  background: linear-gradient(150deg, #221d16, #191612 70%);
+  box-shadow: 0 0 0 1px rgba(217,191,138,.22) inset;
+  margin-bottom: 16px;
+}
+.nav-card h2 { color: var(--accent); }
